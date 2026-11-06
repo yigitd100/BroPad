@@ -1,0 +1,11 @@
+.cache/
+.build/
+dist/
+bin/
+obj/
+.vs/
+*.user
+*.log
+library.json*
+test-results.txt
+route-test-results.txt

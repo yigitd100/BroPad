@@ -1,0 +1,25 @@
+name: Windows package
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  package:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build single-file application
+        shell: powershell
+        run: ./build.ps1
+      - name: Check package and startup logic
+        shell: powershell
+        run: ./tests/run.ps1
+      - uses: actions/upload-artifact@v4
+        with:
+          name: BroPad-Windows-x64
+          path: |
+            dist/BroPad.exe
+            dist/SHA256SUMS.txt
+            dist/validation.txt
