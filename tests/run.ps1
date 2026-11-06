@@ -11,7 +11,10 @@ $lines = & $checks
 if ($LASTEXITCODE -ne 0) { throw ($lines -join [Environment]::NewLine) }
 $packageReport = Join-Path $OutputDir 'package-check.txt'
 $process = Start-Process -FilePath (Join-Path $OutputDir 'BroPad.exe') -ArgumentList @('--verify-package',('"' + $packageReport + '"')) -Wait -PassThru -WindowStyle Hidden
-if ($process.ExitCode -ne 0) { throw 'Embedded package validation failed.' }
+if ($process.ExitCode -ne 0) {
+    if (Test-Path -LiteralPath $packageReport) { Get-Content -LiteralPath $packageReport | Write-Output }
+    throw "Embedded package validation failed (exit code: $($process.ExitCode))."
+}
 $lines += Get-Content -LiteralPath $packageReport
 [IO.File]::WriteAllLines((Join-Path $OutputDir 'validation.txt'),[string[]]$lines)
 $lines | Write-Output

@@ -1,6 +1,7 @@
 param([string]$OutputDir = (Join-Path $PSScriptRoot 'dist'), [string]$Version = '1.2.0', [switch]$Offline)
 $ErrorActionPreference = 'Stop'
 Add-Type -AssemblyName System.IO.Compression.FileSystem
+Add-Type -AssemblyName System.IO.Compression
 $cacheRoot = Join-Path $PSScriptRoot '.cache'
 $stageRoot = Join-Path $PSScriptRoot ('.build\' + [Guid]::NewGuid().ToString('N'))
 $appRoot = Join-Path $stageRoot 'app'
@@ -57,7 +58,14 @@ $appArgs += Get-ChildItem -LiteralPath (Join-Path $PSScriptRoot 'src') -Filter '
 & $compiler @appArgs
 if ($LASTEXITCODE -ne 0) { throw 'Application build failed.' }
 $payload = Join-Path $stageRoot 'payload.zip'
-Compress-Archive -Path (Join-Path $appRoot '*') -DestinationPath $payload
+$payloadStream = [IO.File]::Create($payload)
+$payloadArchive = [IO.Compression.ZipArchive]::new($payloadStream,[IO.Compression.ZipArchiveMode]::Create,$false)
+try {
+    foreach ($file in Get-ChildItem -LiteralPath $appRoot -File -Recurse) {
+        $entryName = $file.FullName.Substring($appRoot.Length + 1).Replace('\','/')
+        [IO.Compression.ZipFileExtensions]::CreateEntryFromFile($payloadArchive,$file.FullName,$entryName,[IO.Compression.CompressionLevel]::Optimal) | Out-Null
+    }
+} finally { $payloadArchive.Dispose(); $payloadStream.Dispose() }
 $payloadHash = (Get-FileHash -LiteralPath $payload -Algorithm SHA256).Hash.ToLowerInvariant()
 if ($Version -notmatch '^\d+\.\d+\.\d+([-.][a-zA-Z0-9.]+)?$') { throw 'Invalid version.' }
 $infoFile = Join-Path $stageRoot 'BuildInfo.cs'
